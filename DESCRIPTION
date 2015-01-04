@@ -1,0 +1,12 @@
+Package: RTutorBankRuns
+Type: Package
+Title: RTutor problem set understanding bank runs
+Version: 0.1
+Date: 2015-04-01
+Author: Joachim Plath
+Maintainer: Joachim Plath <author@email.net>
+Description: RTutor problem set understanding bank runs
+License: Not yet licensed by the author. The default suggestion for licensing is
+	Problem set content: Creative Commons (CC BY)
+	Package code: GPL >= 2.0
+Depends: RTutor, foreign, reshape2, plyr, dplyr, mfx, ggplot2, knitr, regtools, ggthemes, dplyrExtras, grid, gridExtra, prettyR

@@ -1,0 +1,928 @@
+# Problemset: Understanding Bank Runs
+
+  
+```{r include=FALSE}
+
+ps.dir =  'D:/libraries/RTutor/examples' # set to the folder in which this file is stored
+ps.file = 'understanding bank runs.Rmd' # set to the name of this file
+user.name = '' # set to your user name
+
+library(RTutor)
+check.problem.set('understanding bank runs', ps.dir, ps.file, user.name=user.name, reset=FALSE)
+
+# To check your solution in RStudio save (Ctrl-S) and then run all chunks (Ctrl-Alt-R)
+```
+Name: `r user.name`
+
+
+Author: Joachim Plath
+
+
+This problem set analyzes factors leading to bank runs.
+It is developed from the following paper: **"Understanding Bank Runs: The Importance of
+Depositor-Bank Relationships and Networks"**, written by Rajkamal Iyer and Manju Puri.
+You can download the paper from <a href="http://www.nber.org/papers/w14280" target = "_blank"> nber.org/papers/w14280</a>         
+to get more detailed information.
+
+The dataset and the Stata code, can be downloaded from <a href="https://www.aeaweb.org/articles.php?doi=10.1257/aer.102.4.1414" target = "_blank"> aeaweb.org/articles.php?doi=10.1257/aer.102.4.1414</a>
+
+
+## Exercise Content
+
+  1. Overview:                                                         
+    *How to use RTutor and introduction to the issue.*  
+    
+  2. Descriptive and Inductive Statistic:                                                 
+    *Summary statistics for the whole dataset and sub groups.*    
+                 
+  3. General Overview and the Impact of an Insurance Cover:                                                
+    *Model introduction and a first probit regression.*
+    
+  4. Stata vs. R:                           
+    *Differences of Stata and R: how to deal with perfect prediction?*
+    
+  5. Relations of a Loan and the Insurance Cover:                                                                               
+    *Do all depositors run which are above the insurance?*
+    
+  6. Importance of Bank-Depositor Relationship:                                                 
+    *How can the bank-depositor relation be assessed?* 
+    
+  7. Influence of Social Networks:                                                             
+    *How much influence does a network have on the running decision?* 
+    
+  8. Robustness Check:                                                                       
+    *Checks whether the findings are dependent on some omitted factors?*  
+    
+  9. Conclusion                                                                                  
+
+
+## Exercise 1 -- Overview 
+The first exercise is an introduction to RTutor, in order to help you learn how to deal with this problemset.       
+Furthermore, we will define a bank run and take a look on how the definition is reflected in our underlying dataset. 
+
+### 1.1 Introduction to RTutor
+Before you start to use the RTutor html version, you need to be familiar with the interface.
+In the problem set you have to solve one code chunk after the other. Consequently you have to start with the first task of an exercise and continue step by step until the last task of an exercise. Notice that you can do the exercise in a different order so that you can choose which one you want to work on.
+If you click on one of the numbered buttons on top of the page, you can skip to the related exercise. If you click on the `Data Explorer` button, you will get an overview of all loaded data.                          
+All your commands have to be written into the white fields and can be checked on correctness by clicking on the `check` button.
+The directions are always mentioned in the **Task**.
+Sometimes you'll need further information to solve a task, which is always given in an info-block. In order to see the whole information, you need to click on the highlighted info-block. 
+The other buttons above the code field are explained in the first exercise.
+Also keep in mind that:
+- *Previous hints:* will always be highlighted in italics
+- `functions()`, `packages` or `variables` will always be highlighted in red 
+
+At the beginning of each exercise, all required data will be loaded, because RTutor doesn't recognize variables from previous exercises by default. Moreover you will have a better overview, which dataset is used in which exercise.
+Some chapters in this problemset refer to a certain part or table in the replicated paper.
+References to this paper are attached in brackets behind the heading of the exercise. 
+### 1.2 Download and Load
+For this exercise, you will have to return to the homepage where you've downloaded this problem set.
+Download the dataset `data_for_transaction_accounts.dat` into your current working directory.
+
+**Task:** Use the command `read.table()` in order to read the downloaded dataset. Subsequently store it into `dat_trans`.                                     
+When you're finished, click on the `check` button. If you need further help, click on the `hint` button, which provides you with more detailed information.      
+
+info("read.table") # Run this line (Strg-Enter) to show info
+
+info("what do the buttons do") # Run this line (Strg-Enter) to show info
+
+```{r "1  4"}
+```
+To get an overview of the data click on the data-button, which shows you a description of the single variables respective to the column titles.
+
+info("Collected data") # Run this line (Strg-Enter) to show info
+
+### 1.3 What is a Run? (Chapter IV, Figure 3)
+The phenomenon where depositors rush to withdraw their deposits because they believe the bank to fail is called a bank run. Nevertheless, the amount of how much a depositor needs to withdraw in order to be counted as a runner remains open in this definition. According to Iyer and Puri, a runner is a depositor who withdraws more than 75% of his or her deposits at March 13, 2001.
+
+The running behavior can be measured with the variables `runner75`, `runner50` and `runner25`. In order to get a first impression of these variables, click on the `data` button of the last code field and take a look at the related columns.
+
+As you can recognize, these variables are all binary coded. This means that they take either the value of one or zero.
+Furthermore, these variables indicate whether a depositor withdraws respectively more than 75%, 50% or 25%.
+To understand to which extent the definition of a runner depends on the threshold of the withdraw level, we compute the sum of these columns.
+
+The following command shows you how to compute the sum of the column `runner75`.
+This time you only have to click on the `check` button.
+```{r "1  5"}
+sum(dat_trans$runner75)
+```
+
+
+Similar, we compute the sum of `runner50`. Only press `check`.
+
+```{r "1  6"}
+sum(dat_trans$runner50)
+```
+
+Now it?s your turn:
+
+**Task:** Use `sum` to compute the sum of the column `runner25` of the dataset `dat_trans`.
+
+```{r "1  7"}
+```
+***
+As you can see, the calculated sums are decreasing in the threshold of the withdraw level.
+This is easy to explain: The proportions of the depositors who withdraw more than 75% are a subset of the depositors who withdraw more than 50%. Further, these depositors are also a subset of the depositors who withdraw more than 25% of their deposits.
+***                        
+
+To calculate all these numbers within one command, we can use the `summarise_each` function out of the `dplyr` package.
+For the next task, it is recommended to look at the given info block, which is given below.
+
+info("summarise_each") # Run this line (Strg-Enter) to show info
+
+**Task:** Make use of the `summarise_each` function to compute the `sum` of the variables `runner75`, `runner50` and `runner25` which are part of the dataset `dat_trans`. Store your result in `sum_wide`.                     
+Finally show your results, typing `sum_wide` into the last line.                                                  
+*Previous hint:* Look at the info-block to see how to use `summarise_each`. Don't delete the given command, it's part of the solution.
+
+```{r "1  9"}
+library(dplyr)
+```
+
+Now, we want to plot our results using the `ggplot` function. This function needs a data-frame in the long format.
+To get this long format, we use the `melt` command out of the `reshape2` package. 
+As you see, there is no task, so only click on the `check` button. 
+info("melt()") # Run this line (Strg-Enter) to show info
+
+```{r "1  10"}
+library(reshape2)
+sum_long=melt(sum_wide)
+sum_long
+```
+
+Compare the variables `sum_long` and `sum_wide`. `sum_long` has only two columns: one for the value of each column and one for the name of each column. Now this data structure can be used to plot the different sums with `ggplot`.
+
+info("ggplot") # Run this line (Strg-Enter) to show info
+
+**Task:** Create a bar-graph applying the `ggplot` command. Make sure, that you use the `variable`-column of `sum_long` as x-axis and the `value`-column as y-axis. Further set `fill=variable`.                          
+Don?t forget to store your result in the variable `plot1` and show your graph.                                                              
+*Previous hint:* Take a look at the ggplot info-block! The needed package is already loaded for you.  
+
+```{r "1  13"}
+library(ggplot2)
+```
+***
+The graph shows you the sum of all runners depending on the threshold. With an exact value of 307, the number of depositors who withdraw more than 75% of their deposits seems to be very small compared to the 10691 observations in our dataset. 
+The difference between the sums of `runner25` and `runner75` displays, that the biggest part of the runners withdraw more than 75%. We could interpret the level of withdrawals as a measure of panic: The more a depositor withdraws, the more panic he or she got. Therefore, the biggest part of the people who withdraws seems to be directed by panic. Even though the percentage of runners according to the 75% threshold is only 2.87%, this percentage goes hand in hand with fact that even a small fraction of depositors can cause a bank run. These numbers are quite similar compared to other bank runs. E.g. the run on the IndyMac bank was caused by less than 5% of the depositors.
+To get a better understanding of the ggplot-graphs, we want to make our plot look more appropriate. An explanation of what we see is missing in the graph. Moreover, the label of the y-axis should be "sum" instead of value.
+***
+
+**Task:** Set a heading by adding `ggtitle("Number of Runners depending on the running level\n")` to your existing plot using the `+` operator.
+Make sure that you don?t forget to store your results again in `plot1` and show `plot1` afterwards.
+```{r "1  14"}
+
+```
+***
+The "\n" at the end of the heading creates a newline after the heading. This makes the plot less squeezed.
+***
+
+**Task:** Label the y-axis of `plot1`. To do so, add `ylab("sum of runners")` with the `+` operator to `plot1`. Show the plot immediately and don't store your results.
+```{r "1  15"}
+
+```
+
+
+## Exercise 2 -- Descriptive and Inductive Statistic
+After getting more familiar with the term bank run, we now want to get a more precise look on our dataset.
+We further want to examine factors, which influence the running decision.
+
+### 2.1 Load Data
+As mentioned in the introduction, we will load the dataset which is the basis of our analysis.
+These loadings will be done automatically by first clicking on `edit` and then on `check`.
+```{r "2 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+```
+
+
+### 2.2 Summary Statistics (Chapter IV, Table 1A)
+In this part, we want to understand the structure of the underlying data. The structure can be easier understood by visualizing some key-characteristics of the data. To get a first overview, we are going to compute summary statistics, which contains the mean, the standard deviation, and the number of observations, that doesn't contain NA's.
+
+
+**Task:** Apply the `describe` function to your dataset `dat_trans`. Set `num.desc=c("mean","sd","valid.n")`.                                  
+*Previous hint:* Since the required package is loaded, you only write your command into the subsequent lines.  
+
+info("describe") # Run this line (Strg-Enter) to show info
+
+info("NA") # Run this line (Strg-Enter) to show info
+```{r "2  3"}
+library(prettyR)
+
+```
+***
+If we now want to interpret these results, we have to bear in mind what each variable describes and how it is scaled. Some variables are transformed from their original meaning in order to receive estimates, which can be interpreted more easily. For example, the opening balance at the day of the run is counted in 100's of RS. Therefore, the average opening balance was Rs. 3259. Some of the variables don't make sense to interpret but are shown because we don't want to extend the problem set with `select`-commands.
+E.g. the address is simply a number, which can be set in various ways and can't be interpreted.
+***
+
+### 2.3 Grouped Analysis (Chapter IV, Table 1B)
+After we have made up a rough overview, we now need to think of how the different variables have an impact on the running behavior, which is the core of our analysis. To accomplish that, we divide our observations into runners and stayers according to the 75% threshold.                            
+To realize that, we need to create a new column to our dataset, called `type` to which we assign the value `runner` if `runner75` equals one and `stayer` if `runners75` equals zero. This will make our commands easier and the legend of our plots will be more intuitive. As this task is already accomplished for you, you only need to click on the `check` button. 
+```{r "2  4"}
+dat_trans$type=ifelse(dat_trans$runner75==1,"runner","stayer")
+```
+
+
+
+**Task:** Use the  `group_by` command out of the `dplyr`-package to group `dat_trans` by `type`.     
+Don?t forget to store your result in `grouped_dat`.                                               
+    
+info("group_by") # Run this line (Strg-Enter) to show info
+
+
+```{r "2  6"}
+library(dplyr)
+```
+
+In a next step, we want to visualize the means of the groups. We further don't want to look at the whole dataset, because taking the means of some variables doesn't make sense, as shown in the example of the `adress` variable. Therefore we only take a subset, consisting out of:  `minority_dummy`, `above_insurance`, `loanlink`, `avg_deposit_chng`, `avg_withdraw_chng`, `opening_balance`, `ln_accountage`, `avg_transaction`. All of these variables are candidates, which have an impact on the running decision. To get an economic reasoning for the selected variables, take a look at the following info-block.
+
+
+info("variables of interest 1") # Run this line (Strg-Enter) to show info
+
+**Task:** Apply the `summarise_each()` function to calculate the `mean` for each of the following variables: 
+`minority_dummy`, `above_insurance`, `loanlink`, `avg_deposit_chng`, `avg_withdraw_chng`, `opening_balance`, `ln_accountage` and `avg_transaction`.       
+Make sure that you don?t forget to save your result into the variable `mean_wide` and show the output.                                                                                        
+*Previous hint:* This time you can see a part of the command displayed in green. Delete all of the # in front of the commands and complete these given commands.
+
+```{r "2  7"}
+# Only replace the ??? with the mentioned function and delete the #s
+# mean_wide=???(grouped_dat,funs(mean),minority_dummy,above_insurance,loanlink,avg_deposit_chng,avg_withdraw_chng,opening_balance,ln_accountage,avg_transaction)
+# mean_wide
+```
+Our aim is to visualize the calculated means using the `ggplot`-function. Remember that `ggplot` needs one column for the x-axis which should be categorical and representative for the different variable names and one for the y-axis, in our case the calculated means.
+
+**Task:** Use the `melt()` command to melt `mean_wide` with `"type"` as id-variable. Remember to store your command in `mean_long` for further purposes and show your results.
+```{r "2  8"}
+# Only adapt the ??? in the command below and delete the #s.
+# mean_long=melt(mean_wide,id="???")
+# mean_long
+
+```
+***
+The format of the returned tables looks very similar to the tables of exercise 2. All columns, which contain numerical values are transformed into a single column, with the columtitle as rowtitle. Further we have set an id-variable now, which is displayed in the first column for every value of the non-id variables. The length of the table depends on the number of the groups: $length = \# groups \cdot \# columns$, whereas $\#$ denotes the total number.            
+***
+In the next step, we want to visualize our results to get a better understanding of the different characteristics of the groups. We are especially looking for variables that have discrimination power, which means that the difference between runners and stayers is large.
+For this purpose, we draw a bar-graph, which you need to refine later on.
+For this time, you only need to click on the `check` button.
+```{r "2  9",fig.width=11, fig.height=10}
+# this is the basis command
+plot2=ggplot(mean_long,aes(x=variable,y=value,fill=type))+ 
+  # you need positio_dodge() to draw the bars beside each other
+  geom_bar(stat="identity",position=position_dodge())+ 
+  # -> info-block
+  geom_text(aes(ymax=0,y=value/2,label=round(value,3)),position = position_dodge(width=1),vjust=-0.25,size=3)+ 
+   # -> info-block
+  facet_wrap(~variable,scale="free")+
+  xlab("")+
+  ylab("")+
+  ggtitle("Grouped Means\n")
+plot2
+```
+
+info("facet_wrap") # Run this line (Strg-Enter) to show info
+
+info("geom_text") # Run this line (Strg-Enter) to show info
+
+Before we start interpreting our result, take a look at the plot above. There you can recognize that each panel is labeled twice: At the top and at the bottom. For this reason, we delete the labels of the x-axis.
+
+
+**Task:** Display `plot2` and make use of the command `scale_x_discrete(breaks=NULL)` using the `+` operator in order to delete the labels of the x-axis.
+```{r "2  10",fig.width=11, fig.height=10}
+
+```
+***
+Now we get around interpreting the plotted bars:
+Remember that we search for variables, which have a large power of discrimination. Regarding the decision to run a bank, the `above_insurance` variable has the largest impact: the fraction of depositors who are above the 100000 insured Rs. is nearly 20 times higher represented in the runner-group. This striking difference can be explained easily: the amount above the insurance cover is at stake in case of a default of the bank. Consequently, a rational depositor should run if he or she is above the cover. Nevertheless, we see that 0.7% of the stayers are also above the cover as well. If we get an explanation for this kind of behavior, we could prevent or convince depositors, who are above the insurance cover from running.
+
+We also recognize, that the deposit balance (`opening_balance`) is much higher for runners than for stayers at the day of the run. This phenomenon is consistent with our explanation of the insurance cover.                          
+In a nutshell: the more we have, the more we can lose.                                      
+
+This pattern also approves that if only a small number of depositors ran, it can have a large impact on the solvency of the bank, in the case that the runners are rich enough.
+Another factor, which has a huge impact on stayers, but relatively little effect on runners is the `loanlink` variable. Imagine that a depositor who has an outstanding loan at the bank will have more contact to the banking stuff than a depositor who only stores his money at the bank. Out of this relation, he or she might gain some information, which strengthens his or her opinion about the healthiness of the bank.
+*** 
+
+### 2.4 Validate Results (Chapter IV, Table 1B)
+After we have taken a closer look at the calculated means, we further want to check how significant these differences are.
+This validation can be done through a two-sample-t-test. 
+In this case, we conduct a t-test with different standard deviations and unpaired samples.
+A large t-statistic indicates that the null hypothesis is wrong.
+
+info("two sample t-test") # Run this line (Strg-Enter) to show info
+
+
+To conduct a t-test, use the `sapply()` function and then apply a subset of `dat_trans` to the function.
+We use the function `TTest()`, which is the first function that shows the elements of the t-test in a compromised format.
+This time you only need to take a look at the command, but later on you'll do this task on your own.
+
+Therefore, we subset the variables measured in our bar-graph before.
+You don't need to compute this time, just click on `check`.
+info("select") # Run this line (Strg-Enter) to show info
+```{r "2  11"}
+# we overwrite the select function since it is defined in several packages
+select <- dplyr::select 
+subset1=select(dat_trans,runner75,minority_dummy,above_insurance,loanlink,avg_deposit_chng,avg_withdraw_chng,opening_balance,ln_accountage,avg_transaction)
+```
+
+
+The next step is conducting the test. This time you don't need to type in the right command. Only press the `check`-button. But please acknowledge that you have to do it on your own in the fourth exercise. 
+info("sapply()") # Run this line (Strg-Enter) to show info
+
+info("TTest-function") # Run this line (Strg-Enter) to show info
+```{r "2  12",fig.width=11, fig.height=10}
+t(sapply(subset1[-subset1$runner75],function(x) round(TTest(x,subset1$runner75),3)))
+```
+***
+By looking at the p-values in the bottom table, we see that all variables except `minority_dummy` and `avg_deposit_chng` have significant differences between runners and stayers at a 1% level. A p-value below 1% means that if in reality a variable would not systematically differ between runners and stayers. The probability to find differences as extreme or extremer as in our sample would be below 1%. The size of the t-statistic depends on the difference of the means and on the standard deviation. Out of the bar graph and the given statistic we can proof this statement by looking at the `above_insurance` variable and the `opening_balance` variable: the heights of the related bars are so different that we can assume a large t-statistic, if the standard deviations are not too big. Indeed, the standard deviation of `above_insurance` is smaller 1, which increases the t-statistic.               
+These findings strengthen our guess, that the selected variables have an impact on the running decision.
+***
+info("p-value") # Run this line (Strg-Enter) to show info
+
+
+## Exercise 3 -- General Overview and the Impact of an Insurance Cover
+After we have made up a general overview of the data, we have to go one step further and think in a little more abstract ways about the running behavior. A depositor runs because he thinks that the bank will go insolvent. His or her opinion can be influenced by two different sources. Firstly, the information he or she has about the health of the bank and secondly, the information he or she got from the behavior of others. We will examine these two sources of information, starting with the personal information. 
+
+### 3.1 Load Data
+As in Exercise 2, we will load the dataset on which we drive our analysis.
+These loadings will be done automatically, so that you need to first click on `edit` and then on `check`.
+```{r "3 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+```
+### 3.2 Who Runs (Chapter IV, Table 2)
+First of all, we have to think about on an appropriate model. Bear in mind that we want to model the running behavior, that is expressed through the binary variable `runner75`. This leads us to the so called probit approach, which models the running probability *p* with the standard normal distribution: $\mathbb{P}(runner75=1|x)=\Phi (x^{\top }\beta)$.
+info("Deriving the probit approach:") # Run this line (Strg-Enter) to show info
+
+**Task:** Use the `glm()` command to regress `runner75` against: `minority_dummy`, `above_insurance`, `opening_balance`, `loanlink`, `ln_accountage`, `avg_transaction`, `avg_deposit_chng`, and `avg_withdraw_chng` from the dataset `dat_trans` . Don?t forget to store the regression output in the variable `reg1`.                                        
+*Previous hint:* Further you can delete all the # before the given command and then adapt it!
+
+info("glm()") # Run this line (Strg-Enter) to show info
+```{r "3  3"}
+# Delete all the # and insert the needed data-frame for the ??? 
+# reg1=glm(runner75~minority_dummy+above_insurance+opening_balance+loanlink+ln_accountage+avg_transaction+avg_deposit_chng+avg_withdraw_chng,family=binomial(link="probit"),data=???,na.action=na.omit)
+
+```
+In order to get a better understanding of the influences of single variables, we want to show the marginal effects instead of the coefficient, which are calculated by default by the `glm()` function. Onwards, we want to compute robust standard errors to get a more precise level of significance.
+All these features can be computed with the `showreg()` command.
+
+info("showreg()") # Run this line (Strg-Enter) to show info
+
+In order to not overwhelm you, the `showreg()` command is computed for you.
+In the following computation, we take care for the mentioned features. Further, we don't show the Intercept. For more clarity, we round all our results to the 5th decimal place.       
+The only thing you have to do is to click on the `check` button.
+
+```{r "3  5"}
+library(regtools)
+showreg(list(reg1),robust=c(TRUE),robust.type="HC0",coef.transform=c("mfx"),digits=3,omit.coef="(Intercept)")
+```
+***
+To interpret each variable, we first will describe the output in general. The marginal effect and the p-value represented by stars is reported in the first row. You are able to see how the p-value and the stars are related at the bottom of the table. In the second row, the robust standard errors are shown in parenthesis.                                      
+The first two rows at the bottom of the table show some measures of the relative quality of the statistical model. Two popular measures are the AIC and the BIC. Interpreting these measures only makes sense if we have another model with the same dataset, to which we can compare these two measures. The third row indicates the log likelihood of the maximized common log density of the estimated coefficients. It is always a negative number because the common density is restricted to the [0,1] interval. Nevertheless, the log of the common density is negative. The third number shows the deviance of the model, which is also a measure to compare models of the same dataset. The deviance measures the goodness-of-fit of the model with the estimated coefficients of the ML-estimation compared to the null model. The last row displays the number of observations.                                              
+A fist result is the effect of the insurance cover. If a depositor is above the insurance cover, the likelihood of a run increases by 32.9%. Furthermore, this result has a relatively small standard error, which explains the high level of significance. This supports the conclusion, that deposit insurance reduces depositor's? panic. But if we take a closer look at depositors below the insurance cover, a rise in the `opening_balance` seems to increase the likelihood of running. Even though these depositors are below the insurance cover, there are some who decide to run.                                             
+Second, we recognize that the depositor-bank relationship matters. The length of this relation is measured by `ln_accountage`, which is highly significant. The depth of the relationship is measured by the `loanlink` variable, which has the third largest influence on the probability of running. Both of these variables have a negative marginal effect, which means that the larger they are, the smaller is the probability of a run.          
+***
+info("marginal effects & adjusted standard error") # Run this line (Strg-Enter) to show info
+
+info("p-value and stars") # Run this line (Strg-Enter) to show info
+
+One problem, which occurs if we want to interpret the effect of continuous variables on the running probability, is that the marginal change of a continuous variable is hard to imagine. Therefore, we will now take a look at a so called `effectplot`, which calculates changes in the running probability in a more intuitive way.
+
+**Task:** Use the raw formula of the `effectplot()`-function as described in the info block and plug in `reg1`.                                                                                   
+*Previous hint:* Adapt the given code. Therefore delete the # before the command to use the code.
+
+info("effectplot") # Run this line (Strg-Enter) to show info
+
+```{r "3  11",fig.width=11, fig.height=10}
+# only replace the ??? with the metioned regression
+# effectplot(???,numeric.effect="10-90")   
+```
+***
+Finally things are getting much clearer: the result shows the percentage of change in the running probability if we take the difference of the 90%-quintile to the 10%-quintile of the related variable and set the other variables to their mean. Thus, the effect of a change in a regarded variable becomes more intuitive than just looking at the deviation, which only reports marginal changes. For example, the interpretation of the effect of the `opening_balance` is now more intuitive:                                
+If a depositor has a rise in his balance at the day of the run from RS. 124 to Rs. 6330, his or her running probability rises by 0.75%.
+We further see that the `loanlink` and `ln_accountage` are highlighted in red. These two factors are the only influences, which reduce the running probability.
+***
+
+
+
+## Exercise 4 -- Stata vs. R
+In the next step, we want to extend our calculated regression as in the replicated paper. We first want to include the variable `travel_costs` and second control for the variable `ward`.            
+This part deals with the problems, which occur if you want to replicate Stata regressions with R. 
+
+As usual, we load the needed data. We further need the regression from the last exercise.          
+Just click on `edit` first and then on `check`.
+```{r "4 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+reg1=glm(runner75~minority_dummy+above_insurance+opening_balance+loanlink+ln_accountage+avg_transaction+avg_deposit_chng+avg_withdraw_chng,family=binomial(link="probit"),data=dat_trans,na.action=na.omit)
+```
+
+info("control for variable") # Run this line (Strg-Enter) to show info
+
+info("variables of interest 2") # Run this line (Strg-Enter) to show info
+
+Before we start to regress the dependent variable on our new set of variables, we have to prepare the original dataset. For a better measuring of the variable `ward`'s impact, we create dummy variables for each `ward`.
+
+**Task:** Apply the function `factor()` to the column `ward` of the dataset `dat_trans`. Operate on the single column with the `$`-operator.                               
+*Previous hint:* In this task you transform the original dataset, thus store your results in `dat_trans$ward`.
+
+info("factor") # Run this line (Strg-Enter) to show info
+
+info("$-operator") # Run this line (Strg-Enter) to show info
+
+```{r "4  4"}
+```
+
+
+After the preparation we now want to conduct the regression, which leads us to the following problem:
+
+***
+**Stata vs. R:** 
+Since we try to replicate the paper, we now came to a crucial point. If you run a regression that includes the factorized ward variable in Stata, it would give you the following warning: *ward17 != 0 predicts failure perfectly - 14 obs not used*. What this mean can be shown in the following graph:
+```{r "4  5"}
+X=dat_trans # (1)
+X$ward=as.factor(X$ward)  #(2)
+M=model.matrix(runner75~ward-1,X)  #(3)
+M=cbind(model.frame(runner75~ward,X)[1],M) #(4)
+M=M[order(M[,1],decreasing=T),] #(5)
+ex=M[,c("runner75","ward17")]  #(6)
+ex[ex$ward17==1,] #(7)
+coef(glm(runner75~minority_dummy+above_insurance+opening_balance+loanlink+ln_accountage+avg_transaction+avg_deposit_chng+avg_withdraw_chng+ward,data=X,family=binomial(link="probit"),na.action=na.omit))["ward17"] # (8)
+```
+If this code may look strange to you, it can be briefly explained:vhgf   
+(1): First we create a copy of the dataset `dat_trans`.     
+(2)+(3): Then we factorize the ward-variable to get a dummy for each ward in the town to better understand the impact and so control for the effect on other estimates.           
+(4): Next we construct a dataset consisting only out of the dependent variable and the dummy variables.                 
+(5)+(6): We sort this dataset according to the dependent variable and extract the `ward17` column and the dependent variable.       
+(7)+(8): Finally we show only the cases where the ward15 dummy takes the value of 1. We see that in each case, the dependent variable is always 0. We could say: if the `ward17` dummy equals 1, it perfectly predicts `runner75` to be zero.    
+
+If we look at the estimated coefficient of the `ward17` variable, we see that it is extremely large. A coefficient of -3.81 for a dummy variable means, that if the value of the dummy is one, the probability of a run is sharply decreasing.
+
+Stata drops automatically all of these variables. Thus to fully replicate the paper we need a function, which drops all the perfect predictors.        
+I wrote a function called `binary.glm`, which does exactly the same what Stata does in case of perfect prediction: In case of a dummy variable, the perfect prediction variable is deleted with all observation for which the dropped variable predicts the dependent variable perfectly. The output consists of the name and the dropped variables.
+If one wants to compute standard errors clustered at a variable later on, one has the option to set the input parameter `clustervar1`. 
+
+To get all the explanatory variables plus the cluster variable in the underlying data frame of the regression, use `model.frame()`.
+***
+
+**Task:** Use the function `binary.glm()` to regress `runner75` on `minority_dummy`, `above_insurance`, `opening_balance`, `loanlink`, `ln_accountage`, `avg_transaction`, `avg_deposit_chng`, `avg_withdraw_chng`, `ward` and `travel_costs`. Also add the `adress` variable as a cluster variable and display the dropped variables.
+Store your command in the variable `reg2`.                         
+*Previous hint:* Delete the # before the green-inked command and operate on this command.
+
+info("binary.glm()") # Run this line (Strg-Enter) to show info
+```{r "4  9"}
+# This time a cod example is given. You only need to adjust the ??? with the correct Boolean.
+# reg2=binary.glm(formula=runner75~minority_dummy+above_insurance+opening_balance+loanlink+ln_accountage+avg_transaction+avg_deposit_chng+avg_withdraw_chng+ward+travel_costs,link="probit",data=dat_trans,clustervar="adress",show.drops=???)
+
+
+```
+After having calculated and adjusted the regression, we now want to visualize our results.                   
+It would be favorable to show both regressions in one table so that we can check if the marginal effects changed in the second regression.
+
+
+**Task:** Now use the command `showreg()` to get a summary table of your calculated regressions: `reg1` and `reg2`.           
+*Previous hint:* Proceed as in the given example.
+```{r "4  10"}
+# Replace the ??? with the second regression computed above, to get the regression table:
+#showreg(list(reg1,???),robust=c(TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx"),digits=3,omit.coef="(Intercept)|ward")
+
+```
+***
+We see that the differences of the marginal effects are very small, if we add the explanatory variables `travel_costs` and `ward`. This means that the effect of these two variables doesn't seem to change our findings. The significance levels don?t seem to change dramatically either. We could say that our results from `reg1` are robust to these influences. 
+
+Out of the table we recognize two important factors:      
+1. The effect of the insurance cover on the running probability is the largest and also highly significant.       
+2. The negative effect of the loan linkage is the second largest, with a very small p-value        
+
+Think about an economic explanation for these findings. The effect of an insurance cover seems clear: if one is insured there is no incentive to run.
+The impact of the loan linkage isn't that clear for us. Also the relation of these two effects should be investigated more intensive.
+So, in the next sub chapter we focus on the relation of these two influences.
+***
+
+
+info("additional interpretation: comparing the models according to BIC and AIC") # Run this line (Strg-Enter) to show info
+
+
+
+
+## Exercise 5 -- Relation of a Loan and Insurance Cover (Chapter IV, Table 3)
+Now we know that having a loan linkage decreases the running probability of a depositor.
+On the other hand we know, that being above the insurance cover leads to a large increase of the running probability.
+It seems to be, that these two variables react contrary to each other.
+Therefore it would be interesting to know, if a depositor who is above the insurance cover might not run if he had a loan relation. For this purpose, we introduce two variables: `uninsured_rel` and `uninsured_no_rel`.
+
+Before you start, load the needed data. For this purpose, first click on `edit` and then on `check`.
+```{r "5 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+dat_trans$ward=factor(dat_trans$ward)
+org_dat=dat_trans
+```
+
+info("variables of interest 3") # Run this line (Strg-Enter) to show info
+
+**Task:** Run a regression similar to `reg1`: 
+- Use the `binary.glm()` function
+- Take the explanatory variables as in `reg1` but replace `above_insurance` with `uninsured_no_rel` and `uninsured_rel` and regress them on `runner75` 
+- Show the dropped variables.
+- Store your results in `reg3`
+
+```{r "5  2"}
+# Only adjust the ??? with the mentioned variables. Add them in the same order as mentioned!
+#reg3=binary.glm(runner75~minority_dummy+???+???+opening_balance+ln_accountage+loanlink+avg_transaction+avg_withdraw_chng+avg_deposit_chng,link="probit",data=dat_trans,show.drops=TRUE)
+```
+
+***
+***
+#### No Runners above Insurance Limit who have Loan Linkages 
+Look at the output of the previous code chunk. The first entry shows, that `uninsured_loan` predicts `runner75`=0 perfectly. Whenever the variable `uninsured_loan` takes the value of one, the variable `runner75` is always zero. In order to better understand this result, we compute the sum of runners for each possible combination of `above_insurance` and `loanlink`. 
+
+Just click on `check`, to get the mentioned computations.
+```{r "5  3"}
+summarise <- dplyr :: summarise
+summarise(group_by(dat_trans,above_insurance, loanlink), num.runners = sum(runner75))
+```
+From the first exercise, we know that we have 307 runners.
+These runners are grouped as follows: 259 depositors are under the insurance cover and without loan linkage are running. Seven depositors with a loan linkage and under the insurance cover are running. Considering the depositors above the insurance cover, 41 run if they have no loan linkage.
+For depositors, which are above the insurance cover and which have a loan linkage, we got surprising and interesting findings: No runners occurred in this group. This highlights the importance of a loan on the running decision.
+
+If we didn?t drop the variable `uninsured_rel` and estimate the coefficient of this variable, it would be unusual large. In addition the mentioned paper can?t be replicated.  
+
+Click on `check`, to validate the statement.
+```{r "5  4"}
+reg3.1=glm(runner75~minority_dummy+uninsured_no_rel+uninsured_rel+opening_balance+ln_accountage+loanlink+avg_transaction+avg_withdraw_chng+avg_deposit_chng,family=binomial(link="probit"),data=dat_trans,na.action=na.omit)
+coef(reg3.1)["uninsured_rel"]
+```
+With a value of -2.34, the magnitude of the coefficient is very large and shifts the running probability close to zero if the variable `uninsured_rel` equals one. This large coefficient has its origin in the selected estimation method. This phenomenon can be explained intuitively: the ML-estimation maximizes the probability of the observed sample. If there is one variable, which predicts the dependent variable perfectly, the likelihood can be most increased by scaling up this variable. For this reason the related coefficient is set as large as possible.
+***
+***
+**Task:** Use the raw function `effectplot()` to visualize your estimates of `reg3`. Set the heading to `main="Change in running probability\n"`.                                      
+*Previous hint:* If this task seems to be too tricky, look at the info-block of `effectplot` and copy the command. Afterwards, do your adjustments!
+```{r "5  5"}
+
+```
+***
+What you can see here is very clear-speaking:
+the effect of `uninsured_no_rel` shows, that if a depositor hasn't a loan linkage and is above the insurance cover, the running probability rises dramatically. This highlights the importance of the insurance cover, which remains the largest effect.
+*** 
+
+We drop the variable `uninsured_no_rel` to visualize the effect of the other variables in a more detailed version. Further, we show a 95% confidence interval of the effect. You only have to click on the `check`-button to display the plot.
+
+```{r "5  6"}
+effectplot(reg3,ignore.vars="uninsured_no_rel",show.ci=TRUE)
+```
+***
+The smaller the confidence interval, the more precise is the estimated effect. In general, a confidence level with significance level of 5% tells us in which area the effect lies with probability 95%. For example the estimated effect of the `opening_balance` variable lies in a relative small confidence interval. It lies in the closer area of 0.75%. This feature fosters our opinion, that the opening balance will have indeed a significant effect on the running decision. If we look at the effect of `avg_transaction`, the confidence interval ranges from a negative value up to a positive. We cannot be totally sure, whether the estimated effect is larger than zero. Therefore, we don't judge it as an important factor on the running decision.
+***
+
+
+## Exercise 6 -- Importance of Bank-Depositor Relationship
+
+### 6.1 Load Data
+As always we will load the dataset, on which we drive our analysis.
+This loading will be done automatically but the download itself has to be done manually. So download the dataset `"data_for_survey.dat"` into your current working directory.
+After that, you only need to first click on `edit` and then on `check`.
+```{r "6 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+dat_trans$ward=factor(dat_trans$ward)
+# data for the second task
+dat_survey=read.table("data_for_survey.dat") 
+```
+### 6.2 Why are Depositors with a Loan Linkage less likely to run? 
+Now we have some very interesting findings: a loan relation does not only reduce the running probability of depositors in general (first regression), it also keeps the uninsured depositors away from running (third regression).        
+This may have 3 reasons:           
+1. Depositors think that their outstanding loan is offset by their deposits.        
+2. Depositors get information about the true health of the bank and thus don't run.                   
+3. There may be some socio-economic reasoning, e.g. the wealth.               
+
+The first thought can be discarded because in India it isn't allowed to offset outstanding loans against deposits in case of a default.
+The second reason sounds very interesting and can be proved easily with our dataset.
+
+
+#### a) Information Source (Chapter IV, Table 4)
+In this subchapter we want to check the hypothesis whether a loan relation possesses is a source of information and therefore creates some information value. To accomplish that, we look at depositors which had a loan before the bank run and at those who will have a loan in the future.
+Therefore we introduce a set of new variables:              
+`Loanlink_before`, `loanlink_current` and `loanlink_after`.                               
+Look at the description to get more information.
+
+We will first run a regression without the variable `loanlink_after`. In a second regression we include this variable and measure if there is an effect of the `loanlink_after` on other the coefficients of the other variables.
+info("variables of interest 4") # Run this line (Strg-Enter) to show info
+
+**Task:** Run a regression similar to `reg4`. Add first the variable `loanlink_after`, then `ward` and last `travel_costs`. Further, set `clustervar="adress"` and `show.drops=FALSE`. Store your result in the variable `reg5`.                     
+*Previous hint:* You see that there is already a command in your chunk. This command is part of the solution and mustn't be deleted.
+
+```{r "6  2"}
+# The first regression is done for you, to avoid long typing.
+reg4=binary.glm(formula=runner75~minority_dummy+ln_accountage+above_insurance+opening_balance+loanlink_current+loanlink_before+avg_withdraw_chng+avg_deposit_chng+avg_transaction,link="probit",data=dat_trans,show.drops=FALSE)
+# Only replace the ??? with the mentioned variables. Add them in the mentioned order!
+#reg5=binary.glm(formula=runner75~minority_dummy+ln_accountage+above_insurance+opening_balance+loanlink_current+loanlink_before+avg_withdraw_chng+avg_deposit_chng+avg_transaction+???+???+???,link="probit",data=dat_trans,clustervar="adress",show.drops=???)
+```
+
+**Task:** Now use the `showreg()` command to show the results of `reg4` and `reg5`:                      
+Calculate robust standard errors according to HCO and show the marginal effects.        
+Round to the 4th decimal place by setting `digits=4` and don't show the Intercept and the ward dummies.                    
+*Previous hint:* Look at the info-block of `showreg`!
+```{r "6  3"}
+
+```
+***
+What we see here, hits exactly our guess, that a loan linkage has an information value: the effect of a future loan linkage (`loanlink_after`) is very small and not significant. But the effect of the past loan (`loanlink_before`) and the current loan (`loanlink_current`) are larger and much more significant. We can conclude that a future loan has no influence on the decision to run or not to run. That's because a depositor doesn't gain any additional information out of a future relation. 
+The value of the information may come from the conversations of the loan-officer with the depositor or maybe from the fact that the depositor has to go to the bank more often as other depositors without a loan and thus has more chances to get some information about the bank?s health.
+Further we now can explain the coefficient of the `ln_accountage` variable: the older the relation of the bank and the depositor is, the more information can be gained about the health of the bank. This leads to a higher trust in the bank and so keeps the depositor away from running.            
+In the prevailing banking literature, the importance of bank-depositor relationship is highlighted. For example in Goldstein and Pauzner (2005), depositors receive noisy signals about the health of the bank. We now could add, that depositors who had a loan at the bank will receive higher signals. A reason for this might be the interaction with the related loan officer. As Diamond and Dybvic (1983) found out, a bank run depends on depositor?s belief in the ability of the bank to pay the promised payments. The trust in a bank might therefore get fostered through a loan and make this bad equilibria less likely. Finally, we could guess that a depositor is afraid of losing a potential source of financing. Thus depositors with a loan linkage might have less incentive to run in order to not risk the financing of future projects.
+***
+####   b) Socio-economic Background (Chapter V, Table 12)
+In this subchapter we check whether the last thought, that the running behavior is influenced by socio-economic factors, is reasonable for explaining the loan relation. Therefore we need to get more detailed information about the depositors than we actually have.
+This detailed information can be gained through a survey, which contains a list of questions regarding to the socio-economic background of a single depositor.
+info("survey") # Run this line (Strg-Enter) to show info
+
+
+To keep focused on the socio-economic background of a depositor, we select some variables of interest. We focus on the depositor's age, measured in years, the amount of stocks he or she has and his or her wealth.
+The wealth is measured as follows: 
+The depositor is asked whether he or she has a bike, land or an apartment. Then the single assets were weighted on the total amount of assets the depositors have in sum. These three ratios were then added up and represent the wealth variable.
+
+**Task:** Use the `selecet()` function to extract the variables `runner75`, `stock`, `age`, `education`, `wealth`, `education_dummy1` and `education_dummy2` out of `dat_survey` and store it into `subset2`.                          
+*Previous hint:* In the last task of Exercise 1 you already did a similar command.
+
+info("select") # Run this line (Strg-Enter) to show info
+```{r "6  5"}
+
+```
+info("variables of interest 5") # Run this line (Strg-Enter) to show info
+Now after the loading, we group the observations into runners and stayers and check whether there are significant differences. We want to answer the question whether socio-economic reasons may influence the running decision. If there is an influence, there should be some discriminating power of these socio-economic factors.
+Therefore, you now will develop the function called `TTest` which you already used before.
+This function is used in combination with `sapply(data, function(x))`. Recall that `sapply` applies the function to each of the columns of the underlying dataset.
+
+**Task:**
+Write a function called TTest. Type the commands step by step, as mentioned in the task here:
+- to create the function, write: `TTest=function(x,y) {`
+- in the next line, write: `output=t.test(x~y)[c("estimate","p.value","statistic")]`
+- now make one list out of the fractions and write into a new line: `output=unlist(output)`
+- the return value doesn't have to be marked, only type into the next line: `round(output,3)`
+- finally close your command , by writing into the next line: `}`
+ 
+```{r "6  6"}
+
+```
+
+**Task:** Use the `sapply()` function to perform a t-test. Group the input data on the variable `runner75`.       
+As data input use: `subset2[-subset2$runner75]`.                  
+*Previous hint:* If you can't remember how to use the function, look at the last task of Exercise 2. Delete the # in front of the given code and then adjust it.
+
+```{r "6  7"}
+# Only adapt the ???
+# t(sapply(???,function(x) TTest(x,subset2$runner75)))
+```
+***
+The output shows that the mean for all variables is very similar. This means that on average there is no clear trend in a certain direction of the decision. Runners as well as stayers seem to have the same socio-economic properties. Further, all variables are not even significant on the 5% level.
+Putting all this together, it looks as if socio-economic factors don't have an impact on the decision run-stay.
+***
+For proving this assumption, we run a probit regression to measure the changes in the running probability in dependence to these effects.
+
+**Task:** Use the `binary.glm()` function to regress `runner75` like in `reg6`. Also add the variables  `wealth`, `stock` and `age` to the regression formula and store your results in the variable `reg7`.                                              
+*Previous hint:* Just copy the command and then do the adjustments. Don't delete the given example, it's part of the solution.
+```{r "6  8"}
+# copy the code below and then do your adjustments. Add the mentioned variables at the end of the regression formula in the given order!
+reg6=binary.glm(runner75~minority_dummy+ln_accountage+above_insurance+opening_balance+loanlink+avg_deposit_chng+avg_withdraw_chng+avg_transaction+education_dummy1+education_dummy2,data=dat_survey,link="probit",show.drops=TRUE)
+
+```
+***
+What we see, is that the `loanlink` predict the variable `runner75=0` perfectly. This means that all questioned depositors with a loan didn't run. Bear this in mind for our interpretation!
+***
+In order to not bore you by always typing in the same commands, we directly show the output.                         
+So you only have to press `check`.  
+```{r "6  9"}
+showreg(list(reg6,reg7),robust=c(TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx"),digits=3,omit.coef="(Intercept)|ward")
+```
+***
+It is remarkable that the `loanlink` predicts the behavior "staying at home" perfectly.
+This fosters the importance of a loan linkage, which then is independent of socio economic factors.
+Also being above the insurance cover shifts the running probability about more than 60%, which is enormous. Moreover, this coefficient is highly significant.                   
+Regarding the socio-economic factors, we observe the following: 
+The stock investments don't have a significant influence on the running probability, which means that the depositor?s decision isn't due to a liquidity shock experienced by stock losses. 
+Also the age, education or the total wealth don't seem to influence the running probability, which makes our findings of the loan linkage and the insurance cover robust to controlling for age, wealth and education. 
+***
+## Exercise 7 -- Influence of Social Networks 
+We now step back to Exercise 2, where we stated that the decision to run depends on the information a depositor has about the fundamentals of the bank. This information can be gained from internal sources such as a direct relation to the bank or through external sources such as contacts with other depositors. So the decision of other depositors could influence someone?s decision whether to run or not.
+To measure the effects of social networks, we have to structure these external sources.
+First, we measure the so called introducer network:
+A common requirement for banks in India is to ask a depositor who wants to open an account to be introduced by a depositor who already has an account at the bank. The purpose of this requirement is to identify the new depositor, as in India there has been no common passport across the country. 
+Therefore we assign all depositors who have the same introducer to one network.
+Second we measure the neighborhood network by looking at the ward in which a depositor lives. So, all depositors living in the same ward have the same value of the ward-variable.
+
+### 7.1 Load Data
+We proceed as in every exercise and first of all load the dataset on which we drive our analysis.
+These loadings will be done automatically so that you only need to first click on `edit` and then on `check`.
+```{r "7 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+dat_trans$ward=factor(dat_trans$ward)
+```
+
+
+### 7.2 Distribution of Runners
+In this sub-chapter, we try to find a pattern, which shows the relation of runners and wards.
+Maybe we can see that all runners come from a specific ward and therefore could assume, that the running decision is influenced by the decision of the depositors living in the same ward.                                 
+To get a first overview and an intuition of the meaning that a network influences the decision to run, we do the following:
+
+#### 1.Step:              
+**Task:** Apply `group_by` to the dataset `dat_trans`. Group by the variable `ward` and store your result in `dat_ward`.              
+*Previous hint:* If you forget how to use the function, look at Exercise 2.
+```{r "7  2"}
+
+```
+
+#### 2.Step:                              
+**Task:** Use the `summarise` function to sum up the runners in each ward. Therefore set the first input parameter to `dat_ward`. Store your results in the variable `ward_runner`.                         
+*Previous hint:* Delete all the # before the green inked code and work with the given commands.
+```{r "7  3"}
+# replace the ??? with the mentioned function
+# summarise <- dplyr :: summarise
+# ward_runner=summarise(???,SumRunner=sum(runner75))
+
+```
+Now after you've summed up the runners in each ward, we should think on how the depositor's location measured by the ward influences the running decision. 
+Notice, that the ward-variable could be constructed as follows:
+The city can be viewed out of a bird's perspective, looking at a Cartesian coordinator system. This means that we divide the city into squares and now give every square a number starting from the top left to the down right.
+If we now could observe many runners in one ward and some runners at the neighbor ward, we could assume that there is some information spreading around the ward, which affects people in the surrounding area.
+
+#### 3.Step:
+**Task:** Use `ggplot()` to draw a graph as in the example.              
+Use `ward` as the x-axis and `SumRunner` as y-axis.                                  
+*Previous hint:* Delete all the # before the commands and directly work with them.
+```{r "7  4",fig.width=11, fig.height=10}
+# Just replace the ??? with the mentioned variable.
+ 
+# ggplot(ward_runner,aes(x=???,y=???,fill=factor(ward)))+
+#   geom_histogram(stat="identity")+   
+#   theme(legend.position="none")+
+#   ggtitle("Sum of Runners in a certain Ward\\n")
+
+```
+***
+If you look at the graph, you see that the runners are concentrated around the large bars. Each bar represents a ward and is shown in a different color. It roughly looks like a Gaussian curve with the respective extreme value as maximum.
+This pattern reminds on the following:           
+The propagation of somebody's information of the health of the bank and his behavior of running is propagated like in the game: "whisper down the lane". Here someone at the start of the lane whispers a statement to his neighbor. The neighbor only understands the half of the information and whispers this information to his neighbor. He also understands just the half of it...and so on.
+At the end of the line, you got very noisy true information. 
+That's why the direct neighbors of a ward are strongly influenced by the behavior of the runners in this ward. The further afar we move, the less people are influenced by this behavior.
+In a first step, we try to get an overview over the wards and the runners within the ward.
+***
+
+
+### 7.3 Regression Analysis (Chapter V, Table 5)
+After having found some interesting patterns, we look more detailed on how the running probability is influenced by depositors of a certain network.          
+Therefore we run three regressions:
+The first regression is ran with the common explanatory variables but in addition only with the `social_runners`. 
+The second regression uses all common variables plus `ward_runners`. 
+The last regression includes `social_runners`,`ward_runners` and the common variables as used before.
+
+**Task:** Make use of the `glm()` function, to run the third mentioned regression.                    
+Copy the regression formula from `reg9` and only add `social_runners` at the end of the regression formula.                               
+Store your results in `reg10`.                                          
+*Previous hint:* Just copy the command of regression `reg9` and then do the adjustments. Don't delete the given example, it's part of the solution.
+```{r "7  5"}
+reg8=glm(runner75~minority_dummy+ln_accountage+above_insurance+ opening_balance+ loanlink+social_runners+avg_deposit_chng+avg_withdraw_chng+avg_transaction,family=binomial(link="probit"),data=dat_trans,na.action=na.omit) #only with social_runners
+reg9=glm(runner75~minority_dummy+ln_accountage+above_insurance+ opening_balance+ loanlink+ward_runners+avg_deposit_chng+avg_withdraw_chng+avg_transaction,family=binomial(link="probit"),data=dat_trans,na.action=na.omit) # only with ward_runners
+
+```
+
+We first want to show or regression findings in a table, to make them comparable.
+
+**Task:** Use `showreg()` to show all coefficients of the three regressions you calculated above.                  
+Report the marginal effects with robust standard errors according to HC0 for all of the three regressions.          
+Round to the 5th decimal place by setting `digits=5` and don't show the Intercept.                                
+*Previous hint:* Only delete the # before the green inked command and then adapt it.
+```{r "7  6"}
+# Only adapt the ???
+# showreg(list(reg8,???,reg10),robust=c(TRUE,TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx","mfx"),digits=???,omit.coef="(Intercept)")
+
+```
+***
+In the first column, we see the estimation results of the regression where we additionally included only the social network. We see that the probability of a depositor running is increasing in the number of runners in the introducer network. Further, the coefficient of the `social_runners` variable is the second largest, which highlights its importance. In column two, the regression, which additionally included only the neighborhood network, is displayed. Similar to the social network, a rise in the fraction of running neighbors increases the probability of a run. Moreover, this effect is the largest, even bigger than the effect of the deposit insurance.
+In the third column, we take both network variables together and check for the effect on the other variables when we take these two influences together. Both effects are still significant and only decrease a bit.
+***
+
+## Exercise 8 -- Robustness Checks
+Our analysis shouldn't end up without checking our results being robust to certain influences. We thus need to think about factors, which could have an influence on our recent findings. We will adapt our probit model according to these factors and check, whether our findings remain the same.
+
+### 8.1 Load Data
+Download the dataset `data_for_term_deposit_accounts.dat` into your current working directory.
+Automatically, we will read the dataset on which we drive our analysis, so you only need to click on `edit` and then on `check`.
+
+```{r "8 "}
+dat_trans=read.table("data_for_transaction_accounts.dat")
+dat_trans$ward=factor(dat_trans$ward)
+dat_term=read.table("data_for_term_deposit_accounts.dat")
+```
+
+
+### 8.2 Robustness to the Definition of a Runner (Chapter VI, Table 10)
+One could argue that our findings depend on the definition of a runner. This is indeed a reasoned objection. But remember our first bar graph, which showed how the sum of runners depends on the withdraw level - there were no striking differences.
+The impact of these differences on our regression coefficients can be shown, if we regress our explanatory variables against these different definitions of a runner.
+
+**Task:** Copy the given command and only change the dependent variable from `runner50` to `runner25`.       
+Store your results in the variable `reg12`.            
+*Previous hint:* Don't delete the given code. It's part of the solution and will also be tested if you click on the `check` button.
+```{r "8  2"}
+reg11=binary.glm(runner50~minority_dummy+ln_accountage+ above_insurance+opening_balance+loanlink+avg_withdraw_chng+avg_deposit_chng+avg_transaction+ward,data=dat_trans,link="probit",show.drops=FALSE)
+
+```
+
+Further one could argue, that withdraws not only occur at a certain point in time.
+In our analysis we set the running date to March 13, 2001. All the earlier withdraws are not taken into account.
+Now, we extend the period and define a depositor as a runner who withdraws between March 9 and March 13, 2001. During this period, the following occurred:
+on the 9th of March the largest cooperative bank faced a bank run and went insolvent on March, 13.                      
+The variable `runner75_extended` captures exactly the described effect.    
+  
+This time you only have to click on the `check` button:
+```{r "8  3"}
+reg13=binary.glm(runner75_extended~minority_dummy+ln_accountage+ above_insurance+opening_balance+loanlink+avg_withdraw_chng+avg_deposit_chng+avg_transaction+ward,data=dat_trans,link="probit",show.drops=FALSE)
+showreg(list(reg11,reg12,reg13),robust=c(TRUE,TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx","mfx"),digits=4,omit.coef="(Intercept)|ward")
+```
+***
+As can be seen from the table, the significant levels of e.g. the loan linkage don't change. We could say that our finding of a significant effect of a loan linkage is robust to the definition of a runner. Thus the withdraw level of the depositors doesn?t matter. 
+If we moreover extend the period in which a depositor can withdraw, we don't see any large change in the significant levels. This makes our findings further robust to the time period. 
+***
+info("Why only arguing with significance levels") # Run this line (Strg-Enter) to show info
+
+### 8.3 Robustness with respect to Term Deposit Accounts
+So far, we only looked at transaction accounts. But like other banks our examined bank also has term deposit accounts.
+The purpose of these accounts is the long term money saving. Therefore, one makes a contract for leaving his money to the bank until a certain date. Usually the interest rate for such accounts is higher than for transaction accounts.
+If a depositor wants to withdraw his or her deposits before the contracted maturity, the depositor doesn't get the full interest payments. Only a fraction minus a penalty is paid. Therefore, a depositor having saved his money on term deposit accounts has to pay liquidation costs, which may influence his decision to run. Therefore we look at term deposit accounts and transaction accounts separately.
+
+We now show you the regression outcomings for each table produced in the previous exercises.
+The only thing to do is to download the dataset.
+The regressions and the related findings will be done automatically.
+
+
+#### a) Checking of Exercise 3.3 Who runs (Chapter IV, Table 2)
+The following subtasks are done automatically. 
+You only have to click on `check`!
+
+```{r "8  4"}
+reg14=glm(runner~minority_dummy+above_insurance+opening_balance+ln_accountage+loanlink+ln_maturity,family=binomial(link="probit"),data=dat_term,na.action=na.omit)
+dat_term$ward=factor(dat_term$ward)
+reg15=binary.glm(runner~minority_dummy+above_insurance+opening_balance+ln_accountage+loanlink+ln_maturity+ward+travel_costs,data=dat_term,link="probit",clustervar1="household_key",show.drops=TRUE)
+showreg(list(reg14,reg15),robust=c(TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx"),digits=3,omit.coef="(Intercept)|ward")
+```
+We see that the effects are very similar to the findings in 3.3. The three findings:
+- being above the insurance cover increases the running likelihood
+- the higher the opening balance is the higher the running probability is                 
+- having a loan linkage and a long relation to the bank, decreases the likelihood to run                      
+The only concern seems to be the significance level of the `minority_dummy`, which is smaller than the dependent in transaction accounts.
+Furthermore, we see a variable called `ln_maturity` whose sign is negative. This variable measures the distance in days to the contracted maturity. The signs of the coefficients seem intuitive: The closer a term deposit account is far away from his maturity, the more penalty is to pay in case of a withdraw.
+
+#### b) Checking of Exercise 5: Relation of a Loan and Insurance Cover (Chapter IV, Table 3)
+
+```{r "8  5"}
+reg16=binary.glm(runner~minority_dummy+opening_balance+ln_accountage+loanlink+ln_maturity+uninsured_rel+uninsured_no_rel,data=dat_term,link="probit",show.drops=TRUE)
+showreg(list(reg16),robust=c(TRUE),robust.type="HC0",coef.transform=c("mfx"),digits=3,omit.coef="(Intercept)|ward")
+```
+The results are in line with our findings in Exercise 5 for the transaction accounts:
+- If a depositor is above the insurance cover and has a loan relation, he or she doesn't run
+- On the other hand, if a depositor is above the cover and has no loan relation, the running probability rise dramatically
+
+
+#### c) Checking of Exercise 6.2: Why are Depositors with a Loan Linkage less likely to run? (Chapter VI, Table 4)
+After we find out that loan linkages significantly reduce the running probability, we now explain this effect.
+```{r "8  6"}
+reg17=glm(runner~minority_dummy+ln_accountage+above_insurance+opening_balance+loanlink_current+loanlink_before+ln_maturity,data=dat_term,family=binomial(link="probit"),na.action=na.omit)
+reg18=binary.glm(runner~minority_dummy+ln_accountage+above_insurance+opening_balance+loanlink_current+loanlink_before+loanlink_after+travel_costs+ward+ln_maturity,link="probit",data=dat_term,clustervar="household_key",show.drops=FALSE)
+showreg(list(reg17,reg18),robust=c(TRUE,TRUE),robust.type="HC0",coef.transform=c("mfx","mfx"),digits=3,omit.coef="(Intercept)|ward")
+
+```
+We get the same findings like in the regression with the transaction accounts.      
+Especially the main effects of the loan linkage are quiet similar:             
+- A future loan has no significant impact on the running decision            
+- A current loan has a negative impact and is highly significant                   
+- A past loan also has a significant and negative influence  
+We conclude: The depositor-bank relationship may reveal information about the health of the bank and thus keeps the depositor away from running!
+
+
+## Exercise 9 -- Conclusion
+Finally, we want to recapitulate your analysis and summarize the most important findings. 
+We find that the insurance cover is the most powerful way to keep a depositor away from running. Uninsured depositors have a much higher running probability than uninsured. While the insurance cover helps to mitigate a run, it is only partial effective. 
+A second finding is, that the length of the bank-depositor relationship and a past or outstanding loan are important factors to prevent the depositor from running.
+Now remember the third factor:
+
+**Final Task:** Which factor has a significant impact on the running decision?
+- "stocks"
+- "age"
+- "neighbor_runners"
+Assign one of these factors to the variable `answer`.
+
+```{r "9 "}
+# Just write one of the mentioned factors
+answer="???"
+```
+We saw that the more people in the depositor's network run, the more likely is the depositor to run.
+
+## References:
+- Rajkamal Iyer and Manju Puri (2012): "Understanding Bank Runs: The Importance of
+Depositor-Bank Relationships and Networks". In:  American Economic Review 102(4),pp. 1414-1445
+-Douglas W. Diamond and Philip H. Dybvig (1983): "Bank Runs, Deposit Insurance, and Liquidity". In: The Journal of Political Economy 91 (3), pp. 401-419
+- William H. Greene (2008): "Econometric Analysis", Sixth Edition, Pearson Education
+- Gunter L?ffler and Peter N. Posch (2007): "Credit risk modeling,
+using Excel and VBA",   Wiley & Sons
+- Dieter Urban und Jochen Mayerl (2001): "Regressionsanalyse : Theorie, Technik und Anwendung", Zweite Auflage, VS Verlag f?r Sozialwissenschaften
+- Winston Chang (2013): "R Graphics Cookbook", Winston Chang
+- Robert I. Kabacoff (2011): "R in Action Data analysis and graphics with R", Manning Publications
+- Achim Zeileis (2006): "Object-Oriented Computation of Sandwich Estimators", Journal of Statistical Software 16 (9)
+- David A. Freedman (2006): "On The so Called \"Huber Sandwich Estimator\" and \"Robust Standard Errors\" Covariance Matrix Estimators", The American Statistician 60 (4), pp. 299-302
+- Achim Zeileis (2004): "Econometric Computing with HC and HAC", Journal of Statistical Software 11 (10)
+- Tam?s Bartus (2005): "Estimation of marginal effects using margeff", The Stata Journal 5 (3), pp. 309-329
+- Goldstein, Itay, and Ady Pauzner (2005): "Demand-Deposit Contracts and the Probability of Bank Runs", The Journal of Finance 60 (3), pp. 1293-1327
+- Kjell Konis (2007): "Linear Programming Algorithms for Detecting Separated Data in Binary Logistic Regression Models", Dissertation, University of Oxford
+
+
