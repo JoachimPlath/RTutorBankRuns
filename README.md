@@ -11,7 +11,7 @@ if (!require(devtools))
 source_gist("gist.github.com/skranz/fad6062e5462c9d0efe4")
 install.rtutor(update.github=TRUE)
   
-install_github("skranz/RTutorBankRuns")
+install_github("joachimplath/RTutorBankRuns")
 ```
 
 ## 2. Show and work on the problem set
@@ -22,6 +22,7 @@ library(RTutorBankRuns)
 # Adapt your working directory to an existing folder
 setwd("C:/problemsets/RTutorBankRuns")
 # Adapt your user name
-run.ps(user.name="Jon Doe", load.sav=TRUE, sample.solution=FALSE)
+run.ps(user.name="Jon Doe", package="RTutorBankRuns",
+       load.sav=TRUE, sample.solution=FALSE)
 ```
 If everything works fine, a browser window should open, in which you can start exploring the problem set.
